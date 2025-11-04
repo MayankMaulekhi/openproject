@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodieHub - Delicious Food Delivered</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="main.css">
+    <script src="external.js" defer></script>
+    
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo" onclick="showPage('home')">
+                <i class="fas fa-pizza-slice"></i>
+                FoodieHub
+            </div>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a class="nav-item active" onclick="showPage('home')">Home</a></li>
+                    <li><a class="nav-item" onclick="showPage('menu')">Menu</a></li>
+                    <li><a class="nav-item" onclick="showPage('about')">About</a></li>
+                    <li><a class="nav-item" onclick="showPage('contact')">Contact</a></li>
+                </ul>
+            </nav>
+            <div class="cart-icon" onclick="toggleCart()">
+                <i class="fas fa-shopping-cart"></i> Cart
+                <span class="cart-count" id="cartCount">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Cart Overlay -->
+    <div class="cart-overlay" onclick="toggleCart()"></div>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3>Your Cart</h3>
+            <button class="cart-close" onclick="toggleCart()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <div class="empty-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <p>Your cart is empty</p>
+            </div>
+        </div>
+        <div class="cart-total">
+            <div class="total-amount">Total: $<span id="cartTotal">0.00</span></div>
+            <button class="checkout-btn" onclick="showPage('checkout')" disabled id="checkoutBtn">
+                Proceed to Checkout
+            </button>
+        </div>
+    </div>
+
+    <!-- Home Page -->
+    <div id="home" class="page active">
+        <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    <span class="highlight">Delicious Food</span><br>
+                    Delivered to Your Door
+                </h1>
+                <p class="hero-description">
+                    Discover amazing dishes from the best restaurants in your area. Fresh ingredients, fast delivery, and unbeatable taste!
+                </p>
+                <a href="#" class="cta-button">Order Now</a>
+            </div>
+            <div class="hero-image">
+                <div class="food-showcase">
+                    <div class="food-item">
+                        <img src="https://placehold.co/300x200" alt="Gourmet avocado toast with poached eggs, cherry tomatoes, and fresh herbs on sourdough bread" />
+                    </div>
+                    <div class="food-item">
+                        <img src="https://placehold.co/300x200" alt="Colorful Mediterranean salad bowl with mixed greens, feta cheese, olives, and fresh vegetables" />
+                    </div>
+                    <div class="food-item">
+                        <img src="https://placehold.co/300x200" alt="Artisan wood-fired pizza with melted mozzarella, basil leaves, and cherry tomatoes" />
+                    </div>
+                    <div class="food-item">
+                        <img src="https://placehold.co/300x200" alt="Decadent chocolate dessert with berries, whipped cream, and gold leaf garnish on elegant plate" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+        <!-- Categories Section -->
+        <section class="categories-section">
+            <h2 class="section-title" data-aos="fade-up">Browse by Category</h2>
+            <div class="categories-grid">
+                <div class="category-card" data-aos="fade-up" data-aos-delay="100" onclick="filterByCategory('pizza')">
+                    <div class="category-icon">🍕</div>
+                    <h3 class="category-name">Pizza</h3>
+                </div>
+                <div class="category-card" data-aos="fade-up" data-aos-delay="200" onclick="filterByCategory('burgers')">
+                    <div class="category-icon">🍔</div>
+                    <h3 class="category-name">Burgers</h3>
+                </div>
+                <div class="category-card" data-aos="fade-up" data-aos-delay="300" onclick="filterByCategory('drinks')">
+                    <div class="category-icon">🥤</div>
+                    <h3 class="category-name">Drinks</h3>
+                </div>
+                <div class="category-card" data-aos="fade-up" data-aos-delay="400" onclick="filterByCategory('salads')">
+                    <div class="category-icon">🥗</div>
+                    <h3 class="category-name">Salads</h3>
+                </div>
+                <div class="category-card" data-aos="fade-up" data-aos-delay="500" onclick="filterByCategory('desserts')">
+                    <div class="category-icon">🍰</div>
+                    <h3 class="category-name">Desserts</h3>
+                </div>
+                <div class="category-card" data-aos="fade-up" data-aos-delay="600" onclick="filterByCategory('asian')">
+                    <div class="category-icon">🍜</div>
+                    <h3 class="category-name">Asian</h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Popular Items -->
+        <section class="popular-items">
+            <h2 class="section-title" data-aos="fade-up">Popular Items</h2>
+            <div class="items-grid" id="popularItems">
+                 Popular items will be loaded here by JavaScript
+            </div>
+        </section> 
+    </div>
+
+    <!-- Menu Page -->
+    <div id="menu" class="page">
+        <!-- Filters Section -->
+        <section class="filters-section">
+            <div class="filters-container">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Search for food..." id="searchInput">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active" onclick="filterByType('all')">All</button>
+                    <button class="filter-btn" onclick="filterByType('veg')">Vegetarian</button>
+                    <button class="filter-btn" onclick="filterByType('non-veg')">Non-Vegetarian</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn" onclick="filterByPrice('low')">$ Low</button>
+                    <button class="filter-btn" onclick="filterByPrice('medium')">$$ Medium</button>
+                    <button class="filter-btn" onclick="filterByPrice('high')">$$$ High</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Menu Items -->
+        <section class="popular-items">
+            <div class="items-grid" id="menuItems">
+                <!-- Menu items will be loaded here by JavaScript -->
+            </div>
+        </section>
+    </div>
+
+    <!-- About Page -->
+    
+    <!-- Contact Page -->
+    
+
+    <!-- Checkout Page -->
+    
+
+    <!-- Thank You Page -->
+    
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+</body>
+</html>

@@ -1,0 +1,35 @@
+<html>
+    <head>
+
+    </head>
+    <body>
+         <div id="menu" class="page">
+        <!-- Filters Section -->
+        <section class="filters-section">
+            <div class="filters-container">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Search for food..." id="searchInput">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active" onclick="filterByType('all')">All</button>
+                    <button class="filter-btn" onclick="filterByType('veg')">Vegetarian</button>
+                    <button class="filter-btn" onclick="filterByType('non-veg')">Non-Vegetarian</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn" onclick="filterByPrice('low')">$ Low</button>
+                    <button class="filter-btn" onclick="filterByPrice('medium')">$$ Medium</button>
+                    <button class="filter-btn" onclick="filterByPrice('high')">$$$ High</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Menu Items -->
+        <section class="popular-items">
+            <div class="items-grid" id="menuItems">
+                <!-- Menu items will be loaded here by JavaScript -->
+            </div>
+        </section>
+    </div>
+    </body>
+</html>

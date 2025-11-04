@@ -1,0 +1,430 @@
+// Initialize AOS
+AOS.init({
+    duration: 1000,
+    once: true
+});
+
+// Sample menu data (unchanged)
+const menuData = [
+    // ... your existing menuData ...
+];
+
+// Cart and Orders
+let cart = JSON.parse(localStorage.getItem('foodieHubCart')) || [];
+let orders = JSON.parse(localStorage.getItem('foodieHubOrders')) || [];
+let currentFilter = { type: 'all', category: 'all', price: 'all' };
+let searchTimeout = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadPopularItems();
+    loadMenuItems();
+    updateCartUI();
+    setupEventListeners();
+    loadOrdersUI();
+});
+
+// Setup event listeners
+function setupEventListeners() {
+    // Debounced Search functionality
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const searchTerm = this.value.toLowerCase();
+            filterItems({ search: searchTerm });
+        }, 300);
+    });
+
+    // Checkout form submission
+    document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        placeOrder();
+    });
+}
+
+// Page navigation
+function showPage(pageId) {
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+
+    // Show selected page
+    document.getElementById(pageId).classList.add('active');
+
+    // Update navigation active state
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        if (item.textContent.toLowerCase() === pageId) {
+            item.classList.add('active');
+        }
+        if (pageId === 'home' && item.textContent.toLowerCase() === 'home') {
+            item.classList.add('active');
+        }
+    });
+
+    // Close cart if open
+    if (document.getElementById('cartSidebar').classList.contains('open')) {
+        toggleCart();
+    }
+
+    // Load checkout data if navigating to checkout
+    if (pageId === 'checkout') {
+        loadCheckoutData();
+    }
+
+    // Load orders if navigating to myorders
+    if (pageId === 'myorders') {
+        loadOrdersUI();
+    }
+}
+
+// Load popular items
+function loadPopularItems() {
+    const popularItems = menuData.slice(0, 6); // First 6 items
+    renderItems('popularItems', popularItems);
+}
+
+// Load menu items
+function loadMenuItems() {
+    renderItems('menuItems', menuData);
+}
+
+// Render items with lazy loading images
+function renderItems(containerId, items) {
+    const container = document.getElementById(containerId);
+
+    if (items.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No items found.</p>';
+        return;
+    }
+
+    container.innerHTML = items.map(item => `
+        <div class="item-card" data-aos="fade-up">
+            <div class="${item.type}-indicator" title="${item.type === 'veg' ? 'Vegetarian' : 'Non-Vegetarian'}" aria-label="${item.type === 'veg' ? 'Vegetarian' : 'Non-Vegetarian'}">
+                ${item.type === 'veg' ? '●' : '●'}
+            </div>
+            <img src="${item.image}" alt="${item.name} - ${item.description}" class="item-image" loading="lazy">
+            <div class="item-content">
+                <h3 class="item-name">${item.name}</h3>
+                <p class="item-description">${item.description}</p>
+                <div class="item-price">$${item.price.toFixed(2)}</div>
+                <button class="add-to-cart-btn ripple-effect" onclick="addToCart(event, ${item.id})" aria-label="Add ${item.name} to cart">
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    // Re-initialize AOS for new elements
+    AOS.refresh();
+}
+
+// Filter functions with data attributes for buttons
+function filterByCategory(category) {
+    currentFilter.category = category;
+    showPage('menu');
+    filterItems();
+
+    // Scroll to menu items
+    setTimeout(() => {
+        document.querySelector('#menuItems').scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+}
+
+function filterByType(type) {
+    currentFilter.type = type;
+    updateFilterButtons('type', type);
+    filterItems();
+}
+
+function filterByPrice(price) {
+    currentFilter.price = price;
+    updateFilterButtons('price', price);
+    filterItems();
+}
+
+function updateFilterButtons(filterType, activeValue) {
+    // Remove active class from all buttons of this type
+    document.querySelectorAll(`.filter-btn[data-filter-type="${filterType}"]`).forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Add active class to clicked button
+    document.querySelectorAll(`.filter-btn[data-filter-type="${filterType}"]`).forEach(btn => {
+        if (btn.dataset.filterValue === activeValue) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+function filterItems(options = {}) {
+    let filteredItems = [...menuData];
+
+    // Apply search filter
+    if (options.search) {
+        filteredItems = filteredItems.filter(item =>
+            item.name.toLowerCase().includes(options.search) ||
+            item.description.toLowerCase().includes(options.search)
+        );
+    }
+
+    // Apply type filter
+    if (currentFilter.type !== 'all') {
+        filteredItems = filteredItems.filter(item => item.type === currentFilter.type);
+    }
+
+    // Apply category filter
+    if (currentFilter.category !== 'all') {
+        filteredItems = filteredItems.filter(item => item.category === currentFilter.category);
+    }
+
+    // Apply price filter
+    if (currentFilter.price !== 'all') {
+        filteredItems = filteredItems.filter(item => {
+            if (currentFilter.price === 'low') return item.price < 10;
+            if (currentFilter.price === 'medium') return item.price >= 10 && item.price < 15;
+            if (currentFilter.price === 'high') return item.price >= 15;
+            return true;
+        });
+    }
+
+    renderItems('menuItems', filteredItems);
+}
+
+// Cart functions with dynamic flying animation and optimized ripple
+function addToCart(event, itemId) {
+    const item = menuData.find(item => item.id === itemId);
+    const existingItem = cart.find(cartItem => cartItem.id === itemId);
+    const button = event.currentTarget;
+
+    // Disable button briefly
+    button.disabled = true;
+
+    // Flying animation
+    const itemCard = button.closest('.item-card');
+    const itemImage = itemCard.querySelector('.item-image');
+
+    const flyingImage = itemImage.cloneNode(true);
+    flyingImage.style.position = 'fixed';
+    flyingImage.style.zIndex = '9999';
+    flyingImage.style.width = '60px';
+    flyingImage.style.height = '60px';
+    flyingImage.style.borderRadius = '50%';
+    flyingImage.style.pointerEvents = 'none';
+    flyingImage.classList.add('fly-animation');
+
+    const rect = itemImage.getBoundingClientRect();
+    flyingImage.style.top = rect.top + 'px';
+    flyingImage.style.left = rect.left + 'px';
+
+    document.body.appendChild(flyingImage);
+
+    // Calculate cart icon position dynamically
+    const cartIcon = document.querySelector('.cart-icon');
+    const cartRect = cartIcon.getBoundingClientRect();
+
+    flyingImage.animate([
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+        { transform: `translate(${cartRect.left - rect.left}px, ${cartRect.top - rect.top}px) scale(0.1)`, opacity: 0 }
+    ], {
+        duration: 800,
+        easing: 'ease-in-out',
+        fill: 'forwards'
+    });
+
+    setTimeout(() => {
+        flyingImage.remove();
+    }, 800);
+
+    // Ripple effect reuse
+    createRipple(button, event);
+
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({ ...item, quantity: 1 });
+    }
+
+    updateCartUI();
+    saveCart();
+
+    // Show toast notification
+    showToast(`${item.name} added to cart!`);
+
+    // Button feedback
+    const originalText = button.textContent;
+    button.textContent = 'Added!';
+    button.style.background = '#4caf50';
+
+    setTimeout(() => {
+        button.textContent = originalText;
+        button.style.background = '#ff6b35';
+        button.disabled = false;
+    }, 1000);
+}
+
+function createRipple(button, event) {
+    // Reuse ripple element if exists
+    let ripple = button.querySelector('.ripple');
+    if (!ripple) {
+        ripple = document.createElement('span');
+        ripple.classList.add('ripple');
+        button.appendChild(ripple);
+    }
+
+    const rect = button.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = event.clientX - rect.left - size / 2;
+    const y = event.clientY - rect.top - size / 2;
+
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    ripple.classList.remove('animate');
+    void ripple.offsetWidth; // Trigger reflow
+    ripple.classList.add('animate');
+
+    // Remove animation class after animation ends
+    ripple.addEventListener('animationend', () => {
+        ripple.classList.remove('animate');
+    }, { once: true });
+}
+
+function updateCartQuantity(itemId, change) {
+    const item = cart.find(cartItem => cartItem.id === itemId);
+    if (item) {
+        item.quantity += change;
+        if (item.quantity <= 0) {
+            removeFromCart(itemId);
+        } else {
+            updateCartUI();
+            saveCart();
+        }
+    }
+}
+
+function removeFromCart(itemId) {
+    cart = cart.filter(item => item.id !== itemId);
+    updateCartUI();
+    saveCart();
+}
+
+function updateCartUI() {
+    const cartCount = document.getElementById('cartCount');
+    const cartItems = document.getElementById('cartItems');
+    const cartTotal = document.getElementById('cartTotal');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+
+    // Update cart count
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    cartCount.textContent = totalItems;
+
+    if (totalItems === 0) {
+        cartCount.style.display = 'none';
+        cartItems.innerHTML = `
+            <div class="empty-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <p>Your cart is empty</p>
+            </div>
+        `;
+        cartTotal.textContent = '0.00';
+        checkoutBtn.disabled = true;
+    } else {
+        cartCount.style.display = 'flex';
+
+        // Update cart items
+        cartItems.innerHTML = cart.map(item => `
+            <div class="cart-item" aria-label="${item.name} in cart, quantity ${item.quantity}">
+                <img src="${item.image}" alt="${item.name}" class="cart-item-image" loading="lazy">
+                <div class="cart-item-details">
+                    <div class="cart-item-name">${item.name}</div>
+                    <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, -1)" aria-label="Decrease quantity of ${item.name}">-</button>
+                        <span class="quantity" aria-live="polite">${item.quantity}</span>
+                        <button class="quantity-btn" onclick="updateCartQuantity(${item.id}, 1)" aria-label="Increase quantity of ${item.name}">+</button>
+                        <button class="quantity-btn" onclick="removeFromCart(${item.id})" style="margin-left: 10px; background: #f44336;" aria-label="Remove ${item.name} from cart">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        // Update total
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        cartTotal.textContent = total.toFixed(2);
+        checkoutBtn.disabled = false;
+    }
+}
+
+function toggleCart() {
+    const cartSidebar = document.getElementById('cartSidebar');
+    const cartOverlay = document.querySelector('.cart-overlay');
+
+    cartSidebar.classList.toggle('open');
+    cartOverlay.classList.toggle('open');
+}
+
+function saveCart() {
+    localStorage.setItem('foodieHubCart', JSON.stringify(cart));
+}
+
+function loadCheckoutData() {
+    const checkoutItems = document.getElementById('checkoutItems');
+    const subtotal = document.getElementById('subtotal');
+    const finalTotal = document.getElementById('finalTotal');
+
+    if (cart.length === 0) {
+        checkoutItems.innerHTML = '<p>No items in cart</p>';
+        return;
+    }
+
+    checkoutItems.innerHTML = cart.map(item => `
+        <div class="summary-item">
+            <span>${item.name} x ${item.quantity}</span>
+            <span>$${(item.price * item.quantity).toFixed(2)}</span>
+        </div>
+    `).join('');
+
+    const subtotalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    subtotal.textContent = subtotalAmount.toFixed(2);
+    finalTotal.textContent = (subtotalAmount + 2.99).toFixed(2); // Adding delivery fee
+}
+
+// Basic sanitization helper
+function sanitizeInput(str) {
+    const temp = document.createElement('div');
+    temp.textContent = str;
+    return temp.innerHTML;
+}
+
+function placeOrder() {
+    const nameInput = document.getElementById('customerName');
+    const phoneInput = document.getElementById('customerPhone');
+    const addressInput = document.getElementById('customerAddress');
+    const instructionsInput = document.getElementById('specialInstructions');
+
+    const name = sanitizeInput(nameInput.value.trim());
+    const phone = sanitizeInput(phoneInput.value.trim());
+    const address = sanitizeInput(addressInput.value.trim());
+    const instructions = sanitizeInput(instructionsInput.value.trim());
+
+    if (!name || !phone || !address) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    // Generate order number
+    const orderNumber = Math.floor(Math.random() * 90000) + 10000;
+
+    // Save order with status
+    const order = {
+        id: orderNumber,
+        items: [...
